@@ -6,6 +6,7 @@ class LoginController < ApplicationController
   def create
     user = User.find_by_email(user_params[:email])
     if user.present? && user.authenticate(user_params[:password])
+      cookies.encrypted[:user_id] = user.id;
       session[:user_id] = user.id
       redirect_to dashboard_path
     else

@@ -6,6 +6,7 @@ class RegisterController < ApplicationController
   def create
     user = User.new(user_params)
     if user.save
+      cookies.encrypted[:user_id] = user.id;
       session[:user_id] = user.id
       redirect_to dashboard_path
     else
