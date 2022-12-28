@@ -21,9 +21,16 @@ export default class extends Controller {
                 // Called when there's incoming data on the websocket for this channel
                 console.log("receive ")
                 console.log("status = " + data["status"])
-                if(data["status"] == "starting_battle")
+                if(data["status"] == "waiting")
+                {
+                   let info_text = document.getElementById("infoContainer");
+                   info_text.textContent = "Waiting for opponent...";
+                }
+                else if(data["status"] == "starting_battle")
                 {
                     queueChannel.send({act: "get_status"})
+                    let info_text = document.getElementById("infoContainer");
+                    info_text.textContent = "Starting game!";
                 }
                 else if(data["status"] == "in_battle")
                 {
@@ -41,7 +48,12 @@ export default class extends Controller {
                         received(data) {
                             // Called when there's incoming data on the websocket for this channel
                             console.log("set position!")
+                            let surrender_button = document.getElementById("surrender_button");
+                            surrender_button.hidden = false
                             if(data["status"] == "current_state") {
+                                let opponent_info_text = document.getElementById("opponentInfoContainer");
+                                opponent_info_text.hidden = false;
+                                opponent_info_text.textContent = data["opponent_name"];
                                 board.setPosition(data["position"]);
                                 console.log("orientation" + data["orientation"])
                                 console.log("turn color" + data["turn_color"])
@@ -52,6 +64,15 @@ export default class extends Controller {
                                 else
                                 {
                                     board.setOrientation(COLOR.black)
+                                }
+                                let info_text = document.getElementById("infoContainer");
+                                if(data["turn_color"] == "white")
+                                {
+                                    info_text.textContent = "White turn!";
+                                }
+                                else
+                                {
+                                    info_text.textContent = "Black turn!";
                                 }
 
                                 if(data["orientation"] != data["turn_color"])
@@ -81,6 +102,22 @@ export default class extends Controller {
                             {
                                 gameChannel.send({act: "get_position"})
                             }
+                            else if(data["status"] == "game_ended")
+                            {
+                                let info_text = document.getElementById("infoContainer");
+                                console.log("orientation: "+data["orientation"])
+                                console.log("winner: "+data["winner_color"])
+                                info_text.textContent = data["winner_color"]+" win! Reason: "+data["reason"];
+
+                                /*if(data["orientation"] != data["winner_color"])
+                                {
+                                    info_text.textContent = data["winner_color"]+" win! Reason: "+data["reason"];
+                                }
+                                else
+                                {
+                                    info_text.textContent = "You win! Reason: "+data["reason"];
+                                }*/
+                            }
                         }
                     });
                 }
@@ -108,6 +145,15 @@ export default class extends Controller {
 
     initialize(){
         console.log("Initialize board!")
+        let opponent_info_text = document.getElementById("opponentInfoContainer");
+        opponent_info_text.hidden = true;
+
+        let surrender_button = document.getElementById("surrender_button");
+        surrender_button.hidden = true
+        surrender_button.onclick = function() {
+            gameChannel.send({act: "surrender"})
+        }
+
         board = new Chessboard(document.getElementById("boardContainer"),
             {sprite: {url: "../chess/chessboard-sprite.svg"},
                 position: "8/8/8/8/8/8/8/8 w KQkq - 0 1",

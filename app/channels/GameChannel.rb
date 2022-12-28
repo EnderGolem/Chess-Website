@@ -16,12 +16,31 @@ class GameChannel < ApplicationCable::Channel
       return;
     end
     if(act == "get_position") then
-        broadcast_to(current_user, {status: "current_state",
-                                    position: positionToFen(battle.game.position),
-                     orientation:
-                       color_to_string(battle.game.players.select{|player|
-                         player.name == current_user.id}.first.color),
-                     turn_color: color_to_string(battle.game.position.get_cur_color_player)});
+      broadcast_to(current_user, {status: "current_state",
+                                  position: positionToFen(battle.game.position),
+                                  orientation:
+                                    color_to_string(battle.game.players.select{|player|
+                                      player.name == current_user.id}.first.color),
+                                  turn_color: color_to_string(battle.game.position.get_cur_color_player),
+                                  opponent_name: User.find_by(id: battle.game.players.select{|player|
+                                    player.name != current_user.id}.first.name).username});
+
+
+      if(battle.game.is_ended?) then
+
+        # broadcast_to(current_user, {status: "game_ended",
+        #                         orientation:
+        #                               color_to_string(battle.game.players.select{|player|
+        #                                 player.name == current_user.id}.first.color),
+        #                             winner_color: color_to_string(battle.game.get_result.winners.first.first),
+        #                             reason: "Checkmate!"});
+
+        ActionCable.server.broadcast("battle_#{params[:number]}",{status: "game_ended",
+                                                                  winner_color: color_to_string(battle.game.get_result.winners.first.first),
+                                                                  reason: "Checkmate!"});
+
+        end_game(battle.game.players.select{|player| player.color==battle.game.get_result.winners.first.first}.first.name);
+      end
     elsif(act=="move")
       mnot = battle.game.position.possible_moves.keys.select{
         |k| !(k.index(data["from"]).nil?) && !(k.index(data["to"]).nil?)};
@@ -40,7 +59,15 @@ class GameChannel < ApplicationCable::Channel
         end
       end
      battle.game.step!(mnot.first);
+
       ActionCable.server.broadcast("battle_#{params[:number]}", {status:"state_changed"});
+    elsif(act == "surrender")
+      ActionCable.server.broadcast("battle_#{params[:number]}",{status: "game_ended",
+                                   winner_color: color_to_string(battle.game.players.select{|player|
+                                     player.name != current_user.id}.first.color),
+                                   reason: "Surrender!"});
+      end_game(battle.game.players.select{|player|
+        player.name != current_user.id}.first.name);
     end
 
   end
@@ -103,4 +130,9 @@ class GameChannel < ApplicationCable::Channel
       return "black";
     end
   end
+
+  def end_game(winner_id)
+    Battlecontroller.instance.end_battle(params[:number],winner_id);
+  end
+
 end

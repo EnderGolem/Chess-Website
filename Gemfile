@@ -44,7 +44,7 @@ gem "bootsnap", require: false
 
 gem "colorize", "~> 0.8.1"
 
-gem "Extended_chess", git: "https://github.com/EnderGolem/Extended-Chess"
+gem "Extended_chess", git: "https://github.com/Observer189/Extended-Chess"
 
 # Use Sass to process CSS
 # gem "sassc-rails"

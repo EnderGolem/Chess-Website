@@ -40,4 +40,10 @@ class Battlecontroller
     end
   end
 
+  def end_battle(id, winner_id)
+    #Здесь можно сделать с базой все что нужно
+
+    @battles.delete_if { |battle| battle.id == id};
+  end
+
 end

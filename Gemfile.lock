@@ -1,6 +1,6 @@
 GIT
-  remote: https://github.com/EnderGolem/Extended-Chess
-  revision: 780be7227836f1e6e60b4055bd2a660a6ddf5518
+  remote: https://github.com/Observer189/Extended-Chess
+  revision: 212d43013686b63703b46bfd47662cbdf26e78d6
   specs:
     Extended_chess (0.1.0)
 
