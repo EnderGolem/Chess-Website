@@ -5,18 +5,20 @@ class GameChannel < ApplicationCable::Channel
   def subscribed
     stream_from "battle_#{params[:number]}"
 
-    mode = Chess.instance.modes["Classic"];
-    player1 = Player.new("Player1",:white);
-    player2 = Player.new("Player2",:black);
-    setup1 = Chess.instance.setups["Mongols"];
-    setup2 = Chess.instance.setups["Checkers"];
-    game = mode.make_game([player1,player2],[setup1,setup2]);
-
     #ActionCable.server.broadcast("battle_#{params[:number]}", positionToFen(game.position));
     #ActionCable.server.broadcast("battle_#{params[:number]}", positionToFen(game.position));
    end
 
   def receive(data)
+    act = data["act"];
+
+    if(act == "get_status") then
+      status = Matchmaker.instance.user_status(current_user.id);
+      if(status=="none") then
+        ActionCable.server.broadcast("battle_#{params[:number]}", positionToFen(game.position));
+      end
+    end
+
     mode = Chess.instance.modes["Classic"];
     player1 = Player.new("Player1",:white);
     player2 = Player.new("Player2",:black);

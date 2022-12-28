@@ -6,9 +6,11 @@ let gameChannel;
 let board;
 export default class extends Controller {
     connect() {
-       /* queueChannel = consumer.subscriptions.create({channel: "QueueChannel"}, {
+
+        queueChannel = consumer.subscriptions.create({channel: "QueueChannel"}, {
             connected() {
                 console.log("Adding to queue...")
+                queueChannel.send({act: "get_status"})
             },
 
             disconnected() {
@@ -17,13 +19,39 @@ export default class extends Controller {
 
             received(data) {
                 // Called when there's incoming data on the websocket for this channel
-                console.log("received battle_num = " + data)
+                console.log("receive ")
+                console.log("status = " + data["status"])
+                if(data["status"] == "starting_battle")
+                {
+                    queueChannel.send({act: "get_status"})
+                }
+                else if(data["status"] == "in_battle")
+                {
+                    console.log("battle id = " + data["battle_id"])
+                    gameChannel = consumer.subscriptions.create({channel: "GameChannel", number: 1}, {
+                        connected() {
+                            console.log("subscription")
+
+                        },
+
+                        disconnected() {
+                            // Called when the subscription has been terminated by the server
+                        },
+
+                        received(data) {
+                            // Called when there's incoming data on the websocket for this channel
+                            console.log("set position!")
+                            board.setPosition(data);
+                        }
+                    });
+                }
             }
         });
-        console.log("connect board!")*/
-        gameChannel = consumer.subscriptions.create({channel: "GameChannel", number: 1}, {
+        console.log("connect board!")
+        /*gameChannel = consumer.subscriptions.create({channel: "GameChannel", number: 1}, {
             connected() {
                 console.log("subscription")
+
             },
 
             disconnected() {
@@ -35,7 +63,7 @@ export default class extends Controller {
                 console.log("set position!")
                 board.setPosition(data);
             }
-        });
+        });*/
 
     }
 
