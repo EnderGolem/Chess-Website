@@ -4,33 +4,45 @@ class GameChannel < ApplicationCable::Channel
   # стал подписчиком этого канала
   def subscribed
     stream_from "battle_#{params[:number]}"
-
+    stream_for current_user
     #ActionCable.server.broadcast("battle_#{params[:number]}", positionToFen(game.position));
     #ActionCable.server.broadcast("battle_#{params[:number]}", positionToFen(game.position));
    end
 
   def receive(data)
     act = data["act"];
-
-    if(act == "get_status") then
-      status = Matchmaker.instance.user_status(current_user.id);
-      if(status=="none") then
-        ActionCable.server.broadcast("battle_#{params[:number]}", positionToFen(game.position));
+    battle = Battlecontroller.instance.check_player_in_battle(current_user.id);
+    if(battle.nil?) then
+      return;
+    end
+    if(act == "get_position") then
+        broadcast_to(current_user, {status: "current_state",
+                                    position: positionToFen(battle.game.position),
+                     orientation:
+                       color_to_string(battle.game.players.select{|player|
+                         player.name == current_user.id}.first.color),
+                     turn_color: color_to_string(battle.game.position.get_cur_color_player)});
+    elsif(act=="move")
+      mnot = battle.game.position.possible_moves.keys.select{
+        |k| !(k.index(data["from"]).nil?) && !(k.index(data["to"]).nil?)};
+      #Проверка на рокировку
+      if(data["piece"] == "wk" && data["from"] == "e1") then
+        if(data["to"] == "g1") then
+          mnot = ["0-0"];
+        elsif(data["to"] == "c1")
+          mnot = ["0-0-0"];
+        end
+      elsif(data["piece"] == "bk" && data["from"] == "e8")
+        if(data["to"] == "g8") then
+          mnot = ["0-0"];
+        elsif(data["to"] == "c8")
+          mnot = ["0-0-0"];
+        end
       end
+     battle.game.step!(mnot.first);
+      ActionCable.server.broadcast("battle_#{params[:number]}", {status:"state_changed"});
     end
 
-    mode = Chess.instance.modes["Classic"];
-    player1 = Player.new("Player1",:white);
-    player2 = Player.new("Player2",:black);
-    setup1 = Chess.instance.setups["Mongols"];
-    setup2 = Chess.instance.setups["Checkers"];
-    game = mode.make_game([player1,player2],[setup1,setup2]);
-    mnot = game.position.possible_moves.keys.select{
-    |k| !(k.index(data["from"]).nil?) && !(k.index(data["to"]).nil?)};
-    puts "mnot = #{mnot}";
-    puts game.step!(mnot.first);
-
-    ActionCable.server.broadcast("battle_#{params[:number]}", positionToFen(game.position));
   end
 
   private
@@ -82,5 +94,13 @@ class GameChannel < ApplicationCable::Channel
     res.delete_suffix!("/");
 
     return res;
+  end
+
+  def color_to_string(color)
+    if(color==:white) then
+      return "white";
+    elsif(color==:black)
+      return "black";
+    end
   end
 end

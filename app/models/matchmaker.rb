@@ -3,15 +3,15 @@ class Matchmaker
 
   def initialize
     @queue = Array.new
-    @battles = Hash.new
   end
 
-  def add_user(user_id,user_mode)
-    @queue.push([user_id,user_mode])
+  def add_user(user_id,user_setup)
+    @queue.push([user_id,user_setup])
     if(@queue.count==2)
-      @battles[@battles.count] = @queue.first(2);
+      battle = Battlecontroller.instance
+                      .create_battle(Chess.instance.modes["Classic"],@queue[0][0],@queue[1][0],@queue[0][1],@queue[1][1]);
       @queue.pop(2)
-      return @battles.count - 1;
+      return battle.id;
     else
       return -1;
     end
@@ -21,7 +21,7 @@ class Matchmaker
     puts "user id = #{user_id}";
     if(@queue.any?{|hs| hs[0]==user_id}) then
       return "in_queue";
-    elsif(@battles.any?{|k,v| v.any?{|hs| hs[0]==user_id}})
+    elsif(!Battlecontroller.instance.check_player_in_battle(user_id).nil?)
       return "in_battle";
     else
       return "none";
@@ -29,6 +29,6 @@ class Matchmaker
   end
 
   def get_user_battle_id(user_id)
-    return @battles.select{|k,v| v.any?{|hs| hs[0]==user_id}}.first[0];
+    return Battlecontroller.instance.check_player_in_battle(user_id).id;
   end
 end

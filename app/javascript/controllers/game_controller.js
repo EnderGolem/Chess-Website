@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import {Chessboard, INPUT_EVENT_TYPE} from 'cm-chessboard'
+import {Chessboard, INPUT_EVENT_TYPE, COLOR} from 'cm-chessboard'
 import consumer from "../channels/consumer";
 let queueChannel;
 let gameChannel;
@@ -28,10 +28,10 @@ export default class extends Controller {
                 else if(data["status"] == "in_battle")
                 {
                     console.log("battle id = " + data["battle_id"])
-                    gameChannel = consumer.subscriptions.create({channel: "GameChannel", number: 1}, {
+                    gameChannel = consumer.subscriptions.create({channel: "GameChannel", number: data["battle_id"]}, {
                         connected() {
                             console.log("subscription")
-
+                            gameChannel.send({act: "get_position"})
                         },
 
                         disconnected() {
@@ -41,7 +41,46 @@ export default class extends Controller {
                         received(data) {
                             // Called when there's incoming data on the websocket for this channel
                             console.log("set position!")
-                            board.setPosition(data);
+                            if(data["status"] == "current_state") {
+                                board.setPosition(data["position"]);
+                                console.log("orientation" + data["orientation"])
+                                console.log("turn color" + data["turn_color"])
+                                if(data["orientation"] == "white")
+                                {
+                                    board.setOrientation(COLOR.white)
+                                }
+                                else
+                                {
+                                    board.setOrientation(COLOR.black)
+                                }
+
+                                if(data["orientation"] != data["turn_color"])
+                                {
+                                    board.disableMoveInput();
+                                }
+                                else
+                                {
+                                    board.enableMoveInput(inputHandler,(data["turn_color"]=="white")?COLOR.white:COLOR.black)
+                                    function inputHandler(event) {
+                                        switch (event.type) {
+                                            case INPUT_EVENT_TYPE.moveInputStarted:
+                                                console.log(`moveInputStarted: ${event.square}`)
+                                                return true
+                                            case INPUT_EVENT_TYPE.validateMoveInput:
+                                                console.log(`validateMoveInput: ${event.squareFrom}-${event.squareTo}`)
+                                                gameChannel.send({sent_by: "Max", act: "move" ,from: event.squareFrom,
+                                                    to: event.squareTo, piece: board.getPiece(event.squareFrom)});
+                                                return true
+                                            case INPUT_EVENT_TYPE.moveInputCanceled:
+                                                console.log(`moveInputCanceled`)
+                                        }
+                                    }
+                                }
+                            }
+                            else if(data["status"] == "state_changed")
+                            {
+                                gameChannel.send({act: "get_position"})
+                            }
                         }
                     });
                 }
@@ -71,24 +110,8 @@ export default class extends Controller {
         console.log("Initialize board!")
         board = new Chessboard(document.getElementById("boardContainer"),
             {sprite: {url: "../chess/chessboard-sprite.svg"},
-                position: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                position: "8/8/8/8/8/8/8/8 w KQkq - 0 1",
                 responsive: true}
         )
-
-        board.enableMoveInput(inputHandler)
-        function inputHandler(event) {
-            switch (event.type) {
-                case INPUT_EVENT_TYPE.moveInputStarted:
-                    console.log(`moveInputStarted: ${event.square}`)
-                    return true
-                case INPUT_EVENT_TYPE.validateMoveInput:
-                    console.log(`validateMoveInput: ${event.squareFrom}-${event.squareTo}`)
-                    gameChannel.send({sent_by: "Max", from: event.squareFrom,
-                        to: event.squareTo, piece: board.getPiece(event.squareFrom)});
-                    return true
-                case INPUT_EVENT_TYPE.moveInputCanceled:
-                    console.log(`moveInputCanceled`)
-            }
-        }
     }
 }
